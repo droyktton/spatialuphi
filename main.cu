@@ -354,8 +354,25 @@ class cuerda{
                 unsigned long ileft = (i-1+L_)%L_;
                 unsigned long iright = (i+1)%L_;
 
-                real lap_u=raw_u[iright]+raw_u[ileft]-2.0*raw_u[i];
-                real lap_phi=raw_phi[iright]+raw_phi[ileft]-2.0*raw_phi[i];
+                real uleft=raw_u[ileft];
+                real uright=raw_u[iright];
+                real phileft=raw_u[ileft];
+                real phiright=raw_u[iright];
+                #ifdef TILTED
+                if(i==0) {
+                    uleft += L*0.1;
+                    phileft += L*0.1;
+                }  
+                if(i==L-1){
+                    uright -= L*0.1;
+                    phiright -= L*0.1;
+                }  
+                #endif
+
+                //real lap_u=raw_u[iright]+raw_u[ileft]-2.0*raw_u[i];
+                //real lap_phi=raw_phi[iright]+raw_phi[ileft]-2.0*raw_phi[i];
+                real lap_u=uright+uleft-2.0*raw_u[i];
+                real lap_phi=phiright+phileft-2.0*raw_phi[i];
 		        real sin_2phi = sinf(2.0*raw_phi[i]);
 
                 /*real force_u = f0_ + lap_u*Cu;
