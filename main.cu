@@ -94,6 +94,8 @@ class cuerda{
 
         acum_Sofq_u.resize(L);
         acum_Sofq_phi.resize(L);
+        inst_Sofq_u.resize(L);
+        inst_Sofq_phi.resize(L);
 
         thrust::fill(acum_Sofq_u.begin(),acum_Sofq_u.end(),real(0.0));
         thrust::fill(acum_Sofq_phi.begin(),acum_Sofq_phi.end(),real(0.0));
@@ -101,6 +103,11 @@ class cuerda{
         #ifdef DEBUG
         std::cout << "L=" << L << ", dt=" << dt << std::endl;
         #endif
+    }
+
+    void reset_acum_Sofq(){
+        thrust::fill(acum_Sofq_u.begin(),acum_Sofq_u.end(),real(0.0));
+        thrust::fill(acum_Sofq_phi.begin(),acum_Sofq_phi.end(),real(0.0));
     }
 
     void set_f0(real x){
@@ -158,17 +165,20 @@ class cuerda{
 
         thrust::for_each(
             thrust::make_zip_iterator(
-                thrust::make_tuple(Fou_u.begin(),Fou_phi.begin(),acum_Sofq_u.begin(),acum_Sofq_phi.begin())
+                thrust::make_tuple(Fou_u.begin(),Fou_phi.begin(),acum_Sofq_u.begin(),acum_Sofq_phi.begin(),inst_Sofq_u.begin(),inst_Sofq_phi.begin())
             ),
             thrust::make_zip_iterator(
-                thrust::make_tuple(Fou_u.end(),Fou_phi.end(),acum_Sofq_u.end(),acum_Sofq_phi.end())
+                thrust::make_tuple(Fou_u.end(),Fou_phi.end(),acum_Sofq_u.end(),acum_Sofq_phi.end(),inst_Sofq_u.begin(),inst_Sofq_phi.begin())
             ),
-            [=] __device__ (thrust::tuple<complex,complex,real &,real &> t){
+            [=] __device__ (thrust::tuple<complex,complex,real &,real &, real &,real &> t)
+            {
                 complex fu=thrust::get<0>(t);
                 complex fphi=thrust::get<1>(t);
 
                 thrust::get<2>(t) += fu.x*fu.x + fu.y*fu.y; // S_u(q)
                 thrust::get<3>(t) += fphi.x*fphi.x + fphi.y*fphi.y;; // S_phi(q)
+                thrust::get<4>(t) = fu.x*fu.x + fu.y*fu.y;
+                thrust::get<5>(t) = fphi.x*fphi.x + fphi.y*fphi.y;
             }
         );
         fourierCount++;
@@ -641,6 +651,12 @@ class cuerda{
         out << "\n" << std::endl;
     };
 
+    void print_inst_sofq(std::ofstream &out){
+        for(int i=0;i<L;i++){
+            out << inst_Sofq_u[i] << " " << inst_Sofq_phi[i] << "\n";
+        }
+        out << "\n" << std::endl;
+    };
 
     private:
         real dt;
@@ -661,6 +677,8 @@ class cuerda{
 
         thrust::device_vector<real> acum_Sofq_u;
 	    thrust::device_vector<real> acum_Sofq_phi;
+        thrust::device_vector<real> inst_Sofq_u;
+	    thrust::device_vector<real> inst_Sofq_phi;
 
         #ifdef NOISESPECTRA
         std::vector<real> vuspectrum;
@@ -682,6 +700,9 @@ int main(int argc, char **argv){
 
     std::ofstream sofqout("sofq.dat");
     sofqout << "#av_Sofq_u[i]" << " " << "av_Sofq_phi[i]" << "\n";
+
+    std::ofstream instsofqout("inst_sofq.dat");
+    instsofqout << "#inst_Sofq_u[i]" << " " << "inst_Sofq_phi[i]" << "\n";
 
     std::ofstream cmout("cm.dat");
     cmout << "#t" << " " << "velu" << " " << "velphi" << " " << "cmu" << " " 
@@ -788,8 +809,11 @@ int main(int argc, char **argv){
         C.rescale();    
 
         #ifdef MONITORCONFIGS
-        if(i%Nmes==0)
-        C.print_config(confout);
+        if(i%Nmes==0){
+            C.print_config(confout);
+            C.fourier_transform();
+            C.print_inst_sofq(instsofqout);
+        }
         #endif
 
         if(i%Nmes==0 || i==0){
@@ -803,6 +827,7 @@ int main(int argc, char **argv){
 	    if(i==int(Nrun/2.0)) 
 	    {
 		    r0 = C.roughness();
+            C.reset_acum_Sofq();
 		    //q0=C.u[0];phi0=C.phi[0];
 	    }
         //if(i%(Nrun/1000)==0) C.print_config(lastconfout); 
