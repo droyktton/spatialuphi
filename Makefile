@@ -8,5 +8,9 @@ PARAMS = -DCu=1.0 -DCphi=1.0 -DEpsilon=0.001 -DNOISESPECTRA -DDOUBLE -DMONITORCO
 LDFLAGS = -L/opt/nvidia/hpc_sdk/Linux_x86_64/23.7/math_libs/12.2/lib64 
 
 
-myprogram: main.cu
+spatialuphi: main.cu
 	$(CXX) $(FLAGS) $(PARAMS) main.cu -o spatialuphi $(LDFLAGS) $(INCLUDES) 
+
+
+update_git:
+	git add *.cu Makefile *.h README.md ; git commit -m "program update"; git push
