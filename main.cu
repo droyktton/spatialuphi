@@ -787,6 +787,11 @@ int main(int argc, char **argv){
         if(i%Nrescale==0)
         C.rescale();    
 
+        #ifdef MONITORCONFIGS
+        if(i%Nmes==0)
+        C.print_config(confout);
+        #endif
+
         if(i%Nmes==0 || i==0){
             //C.print_config(confout);
             C.print_roughness(cmout,i*dt,acumroughness);
