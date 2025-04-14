@@ -1,0 +1,10 @@
+Esto solo anda para repositorios publicos hasta donde lo probamos:
+
+git clone https://github.com/droyktton/spatialuphi.git
+
+generar token, usarlo como password la primera vez.
+Luego, para no tener que ponerlo de nuevo
+
+git config --global credential.helper store
+
+y usar como siempre
