@@ -74,13 +74,17 @@ class cuerda{
 	        u[i]=Epsilon*(rand()*1.0/RAND_MAX-0.5);
             //phi[i]=Epsilon*sin(i*20.0*2*M_PI/L); 
 	        phi[i]=Epsilon*(rand()*1.0/RAND_MAX-0.5);
+            #ifdef TILT
+            u[i]+= i*TILT;      
+            phi[i]+= i*TILT;      
+            #endif  
         }
 	    //std::cout << "Epsilon=" << Epsilon << std::endl;
 
         //thrust::sequence(u.begin(),u.end());
 
         f0=0.0;
-
+        
         //
         #ifdef DOUBLE
         CUFFT_SAFE_CALL(cufftPlan1d(&plan_r2c,L,CUFFT_D2Z,1));
@@ -354,25 +358,26 @@ class cuerda{
                 unsigned long ileft = (i-1+L_)%L_;
                 unsigned long iright = (i+1)%L_;
 
-                real uleft=raw_u[ileft];
-                real uright=raw_u[iright];
-                real phileft=raw_u[ileft];
-                real phiright=raw_u[iright];
-                #ifdef TILTED
+                real uleft = raw_u[ileft];
+                real uright = raw_u[iright];
+                real phileft = raw_phi[ileft];
+                real phiright = raw_phi[iright];
+                
+                #ifdef TILT
                 if(i==0) {
-                    uleft += L*0.1;
-                    phileft += L*0.1;
+                    uleft -= L_*TILT;
+                    phileft -= L_*TILT;
                 }  
-                if(i==L-1){
-                    uright -= L*0.1;
-                    phiright -= L*0.1;
+                if(i==L_-1){
+                    uright += L_*TILT;
+                    phiright += L_*TILT;
                 }  
                 #endif
 
                 //real lap_u=raw_u[iright]+raw_u[ileft]-2.0*raw_u[i];
                 //real lap_phi=raw_phi[iright]+raw_phi[ileft]-2.0*raw_phi[i];
-                real lap_u=uright+uleft-2.0*raw_u[i];
-                real lap_phi=phiright+phileft-2.0*raw_phi[i];
+                real lap_u = uright + uleft - 2.0*raw_u[i];
+                real lap_phi = phiright + phileft - 2.0*raw_phi[i];
 		        real sin_2phi = sinf(2.0*raw_phi[i]);
 
                 /*real force_u = f0_ + lap_u*Cu;
@@ -770,6 +775,9 @@ int main(int argc, char **argv){
     #endif
     #ifdef NOISESPECTRA
     logout << "NOISESPECTRA\n";
+    #endif
+    #ifdef TILT
+    logout << "TILT= " << TILT << "\n";
     #endif
     logout 
 	<< "Cu= " << Cu 
