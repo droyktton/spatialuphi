@@ -172,7 +172,7 @@ class cuerda{
                 thrust::make_tuple(Fou_u.begin(),Fou_phi.begin(),acum_Sofq_u.begin(),acum_Sofq_phi.begin(),inst_Sofq_u.begin(),inst_Sofq_phi.begin())
             ),
             thrust::make_zip_iterator(
-                thrust::make_tuple(Fou_u.end(),Fou_phi.end(),acum_Sofq_u.end(),acum_Sofq_phi.end(),inst_Sofq_u.begin(),inst_Sofq_phi.begin())
+                thrust::make_tuple(Fou_u.end(),Fou_phi.end(),acum_Sofq_u.end(),acum_Sofq_phi.end(),inst_Sofq_u.end(),inst_Sofq_phi.end())
             ),
             [=] __device__ (thrust::tuple<complex,complex,real &,real &, real &,real &> t)
             {
