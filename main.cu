@@ -374,17 +374,11 @@ class cuerda{
                 }  
                 #endif
 
-                //real lap_u=raw_u[iright]+raw_u[ileft]-2.0*raw_u[i];
-                //real lap_phi=raw_phi[iright]+raw_phi[ileft]-2.0*raw_phi[i];
                 real lap_u = uright + uleft - 2.0*raw_u[i];
                 real lap_phi = phiright + phileft - 2.0*raw_phi[i];
 		        real sin_2phi = sinf(2.0*raw_phi[i]);
 
-                /*real force_u = f0_ + lap_u*Cu;
-                real force_phi = -sinf(2.0*raw_phi[i])+ lap_phi*Cphi;
-                thrust::get<0>(t) = 0.5*(force_u-force_phi);
-                thrust::get<1>(t) = 0.5*(force_u+force_phi);*/
-
+                // forces on u and phi elements
                 thrust::get<0>(t) = 0.5*(Alpha*Alpha*f0_+sin_2phi+(Cu*Alpha*lap_u-Cphi*lap_phi));
                 thrust::get<1>(t) = 0.5*(Alpha*f0_-Alpha*sin_2phi+(Cu*lap_u+Alpha*Cphi*lap_phi)); 
             } 
