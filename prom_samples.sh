@@ -1,4 +1,7 @@
-samples=5; 
+samples=$1
+
+echo "samples="$samples
+
 for((i=1;i<$samples;i++))
 do 
     echo $i; 
