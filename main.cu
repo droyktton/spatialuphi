@@ -412,6 +412,14 @@ class cuerda{
         #endif
     }
 
+    void reset_acum_velocity(){
+        #ifdef NOISESPECTRA
+        vuspectrum.clear();
+        vphispectrum.clear();
+        #endif
+    }
+
+
     void update_runge_kutta4(){
 
         real *raw_u = thrust::raw_pointer_cast(&u[0]); 
@@ -703,6 +711,40 @@ class cuerda{
 };
 
 int main(int argc, char **argv){
+
+    if(argc<6){
+        std::cout << "Error: Not enough arguments" << std::endl;
+        std::cout << "Arguments: L f0 f1 Nrun [seed]" << std::endl;
+        std::cout << "L: length of the system" << std::endl;
+        std::cout << "f0: starting force" << std::endl;
+        std::cout << "f1: stoping force" << std::endl;
+        std::cout << "df: force step" << std::endl;
+        std::cout << "Usage: " << argv[0] << " L f0 f1 df Nrun [seed]" << std::endl;
+        return 1;
+    }
+    std::ofstream logout("log.txt");
+
+
+    unsigned int L=atoi(argv[1]);
+
+    real f0=atof(argv[2]);
+    real f1=atof(argv[3]);
+    real df=atof(argv[4]);
+
+    unsigned long Nrun = atoi(argv[5]);
+    unsigned long Neq = unsigned(Nrun/2.0);
+
+    real dt=0.01;
+
+    int Nmes=1000;
+    int Nrescale=100*Nmes;
+
+    unsigned int seed=1234;
+    if(argc==7) seed=(unsigned int)atoi(argv[6]); 
+    srand(seed);
+    cuerda C(L,dt);
+
+
     // Get the current CUDA device
     int device;
     cudaGetDevice(&device);
@@ -741,26 +783,10 @@ int main(int argc, char **argv){
     std::ofstream sofwout("Sofw.dat");
     #endif
 
-    unsigned int L=atoi(argv[1]);
-    real f0=atof(argv[2]);
-    unsigned long Nrun = atoi(argv[3]);
-    unsigned long Neq = unsigned(Nrun/2.0);
-    real dt=0.1;
-
-    int Nmes=1000;
-    int Nrescale=10*Nmes;
-
-    unsigned int seed=1234;
-    if(argc==5) seed=(unsigned int)atoi(argv[5]); 
-    srand(seed);
-    cuerda C(L,dt);
-    C.set_f0(f0);
-
-
     #ifdef DOUBLE
-    logout << "double precision\n";
+    logout << "DOUBLE precision\n";
     #else
-    logout << "simple precision\n";
+    logout << "SIMPLE precision\n";
     #endif
     #ifdef RK4
     logout << "RK4\n";
@@ -774,20 +800,21 @@ int main(int argc, char **argv){
     logout << "TILT= " << TILT << "\n";
     #endif
     logout 
-	<< "Cu= " << Cu 
-	<< ", Cphi= " << Cphi
-	<< ", Epsilon= " << Epsilon
-	<< ", dt= " << dt
-	<< ", L= " << L
-	<< ", seed= " << seed;
+	<< "Cu= " << Cu << "\n"
+	<< "Cphi= " << Cphi << "\n"
+	<< "Epsilon= " << Epsilon << "\n"
+	<< "dt= " << dt << "\n"
+	<< "L= " << L << "\n"
+    << "Nmes= " << Nmes << "\n"
+    << "Nrescale= " << Nrescale << "\n"
+    << "Nrun= " << Nrun << "\n"
+    << "Neq= " << Neq << "\n"
+    << "df= " << df << "\n"
+    << "f0= " << f0 << "\n"
+    << "f1= " << f1 << "\n"
+	<< "seed= " << seed << "\n ======= \n";
     logout.flush();
 
-
-    //thrust::tuple<real,real> cm0 = C.center_of_mass();
-    //thrust::tuple<real,real,real,real> r0 = C.roughness();
-
-    // Start the timer
-    auto start = std::chrono::high_resolution_clock::now();
 
     //real q0,phi0,q1,phi1;
     thrust::tuple<real,real,real,real,real,real,real,real> r0 = C.roughness();
@@ -796,96 +823,104 @@ int main(int argc, char **argv){
     thrust::tuple<real,real> vcm;
 
     real vcmu,vcmphi;
-    vcmu=vcmphi=0.0;
-
-    // real vcmu0,vcmphi0;
-    // vcmu0=vcmphi0=0.0;
-
-    unsigned long ime=0;
 
 
-    for(int i=0;i<Nrun;i++){
-        #ifdef RK4
-        C.update_runge_kutta4();
-        #else
-        C.update();
-        #endif
+    // Start the timer
+    auto start = std::chrono::high_resolution_clock::now();
+    logout << "Starting simulation..." << std::endl;
 
-        if(i>Neq){
+    // histeresis loop
+    for (real f = f0, dir = df; (dir > 0 && f <= f1) || (dir < 0 && f >= f0); f += dir)
+    {
+        logout << "f= " << f0 << std::endl;
+        logout.flush();
 
-                vcm=C.center_of_mass_velocity();
-                vcmu+=thrust::get<0>(vcm);
-                vcmphi+=thrust::get<1>(vcm);
-                C.acum_velocity(vcm);
+        C.set_f0(f);
+        vcmu=vcmphi=0.0;
+        C.reset_acum_Sofq();
+        C.reset_acum_velocity(); 
+        unsigned long ime=0;
 
-                // vcm=C.particle_velocity(0);
-                // vcmu0+=thrust::get<0>(vcm);
-                // vcmphi0+=thrust::get<1>(vcm);
-                ime++;
-        }
 
-        if(i%Nrescale==0)
-        C.rescale();    
+        for(int i=0;i<Nrun;i++)
+        {
+            #ifdef RK4
+            C.update_runge_kutta4();
+            #else
+            C.update();
+            #endif
 
-        #ifdef MONITORCONFIGS
-        if(i%Nmes==0){
-            C.print_config(confout);
-            C.fourier_transform();
-            C.print_inst_sofq(instsofqout);
-        }
-        #endif
-
-        if(i%Nmes==0 || i==0){
-            //C.print_config(confout);
-            C.print_roughness(cmout,i*dt,acumroughness);
-            if(i>int(Nrun/2.0)){
-                C.fourier_transform();
-                //C.print_sofq(sofqout);
+            if(i>Neq){
+                    vcm=C.center_of_mass_velocity();
+                    vcmu+=thrust::get<0>(vcm);
+                    vcmphi+=thrust::get<1>(vcm);
+                    C.acum_velocity(vcm);
+                    ime++;
             }
-        } 
-	    if(i==int(Nrun/2.0)) 
-	    {
-		    r0 = C.roughness();
-            C.reset_acum_Sofq();
-		    //q0=C.u[0];phi0=C.phi[0];
-	    }
-        //if(i%(Nrun/1000)==0) C.print_config(lastconfout); 
-        //C.update();
+
+            if(i%Nrescale==0) {
+                C.rescale();
+                logout << "rescale at " << i << std::endl;
+            }    
+
+            #ifdef MONITORCONFIGS
+            if(i%MONITORCONFIGS==0){
+                C.print_config(confout);
+                C.fourier_transform();
+                C.print_inst_sofq(instsofqout);
+            }
+            #endif
+            // monitor every Nmes steps
+            if(i%Nmes==0){
+                //std::cout << "i= " << i << std::endl;
+                C.print_roughness(cmout,i*dt,acumroughness);
+                if(i>Neq){
+                    C.fourier_transform();
+                }
+            } 
+            // if steady state...
+            if(i==Neq) 
+            {
+                r0 = C.roughness();
+                C.reset_acum_Sofq();
+            }
+        }
+               
+        //thrust::tuple<real,real> cm1 = C.center_of_mass();
+        thrust::tuple<real,real,real,real,real,real,real,real> r1 = C.roughness();
+        //q1=C.u[0];phi1=C.phi[0];
+        
+        #ifdef NOISESPECTRA
+        C.velocity_spectra(sofwout);
+        #endif
+
+        // last config and last structure factor
+        C.print_config(confout);
+        C.print_sofq(sofqout);
+
+        // Averages for a single field
+        vhout << std::setprecision(4) << f << " " << vcmu/real(ime) << " " << vcmphi/real(ime) << " "
+        << (thrust::get<0>(r1)-thrust::get<0>(r0))/(Nrun*dt*0.5) << " " 
+        << (thrust::get<1>(r1)-thrust::get<1>(r0))/(Nrun*dt*0.5) << " " 
+        << thrust::get<2>(r1) << " " << thrust::get<3>(r1) << " "
+        << thrust::get<2>(r0) << " " << thrust::get<3>(r0) << " "
+        << thrust::get<4>(r0) << " " << thrust::get<5>(r0) << " "
+        << thrust::get<4>(r1) << " " << thrust::get<5>(r1) << " "
+        << thrust::get<0>(acumroughness)/real(ime) << " " << thrust::get<1>(acumroughness)/real(ime) << " "
+        << dir << std::endl;
+
+        // change direction
+        if (f + dir > f1 && dir > 0) dir = -df;
     }
-    //thrust::tuple<real,real> cm1 = C.center_of_mass();
-    thrust::tuple<real,real,real,real,real,real,real,real> r1 = C.roughness();
-    //q1=C.u[0];phi1=C.phi[0];
-    
-    #ifdef NOISESPECTRA
-    C.velocity_spectra(sofwout);
-    #endif
 
     // Stop the timer
     auto end = std::chrono::high_resolution_clock::now();
 
-    C.print_config(confout);
-    C.print_sofq(sofqout);
-
-    /*std::cout << f0 << " " 
-    << (thrust::get<0>(cm1)-thrust::get<0>(cm0))/(Nrun*dt) << " " 
-    << (thrust::get<1>(cm1)-thrust::get<1>(cm0))/(Nrun*dt) << std::endl;*/
-
-    vhout << std::setprecision(4) << f0 << " " << vcmu/real(ime) << " " << vcmphi/real(ime) << " "
-    << (thrust::get<0>(r1)-thrust::get<0>(r0))/(Nrun*dt*0.5) << " " 
-    << (thrust::get<1>(r1)-thrust::get<1>(r0))/(Nrun*dt*0.5) << " " 
-    << thrust::get<2>(r1) << " " << thrust::get<3>(r1) << " "
-    << thrust::get<2>(r0) << " " << thrust::get<3>(r0) << " "
-    << thrust::get<4>(r0) << " " << thrust::get<5>(r0) << " "
-    << thrust::get<4>(r1) << " " << thrust::get<5>(r1) << " "
-    << thrust::get<0>(acumroughness)/real(ime) << " " << thrust::get<1>(acumroughness)/real(ime) << " "
-    << std::endl;
-
     // Calculate the duration
     std::chrono::duration<double> duration = end - start;
-    // Output the duration
 
-       
-    logout << ", Time taken: " << duration.count() << " seconds"
+    // Output the duration      
+    logout << "Time taken: " << duration.count() << " seconds"
     << ", device= " << deviceProp.name << std::endl;
 
     return 0;
