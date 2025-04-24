@@ -11,6 +11,7 @@
 #include "cutil.h"
 #include <chrono>
 #include <iomanip>
+#include <filesystem> // C++17
 
 #ifndef Cu
 #define Cu 1.0   // u elastic constant
@@ -30,7 +31,7 @@
 
 // used to perturb initial flat condition
 #ifndef Epsilon
-#define Epsilon 0.1
+#define Epsilon 0.0
 #endif
 
 #ifdef DOUBLE
@@ -42,14 +43,49 @@ typedef cufftComplex complex;
 #endif
 
 //#define NOISESPECTRA
-
 //#define RK4
-
-std::ofstream logout("logfile.dat");
 
 class cuerda{
 
     public:
+    
+    void initial_condition(){
+        thrust::fill(u.begin(),u.end(),real(0.0));
+        thrust::fill(phi.begin(),phi.end(),real(0.0));
+
+        // random initial condition
+        for(int i=0;i<L;i++){
+            //u[i]=Epsilon*sin(i*30.0*2*M_PI/L) ; 	
+	        u[i]=Epsilon*(rand()*1.0/RAND_MAX-0.5);
+            //phi[i]=Epsilon*sin(i*20.0*2*M_PI/L); 
+	        phi[i]=Epsilon*(rand()*1.0/RAND_MAX-0.5) + 2*M_PI*rand()*1.0/RAND_MAX;
+            #ifdef TILT
+            u[i]+= i*TILT;      
+            phi[i]+= i*TILT;      
+            #endif  
+        }
+
+        std::string filename = "initial_configuration.inp";
+        if (std::filesystem::exists(filename)) {
+            std::cout << "Reading Initial Configuration: " << filename << '\n';
+            std::ifstream file(filename);
+            double a, b, c, d;    
+            int i=0;
+            while (file >> a >> b >> c >> d) {
+                if(i>=L){
+                    std::cerr << "Wrong Initial Configuration" << std::endl;   
+                }
+                u[i]=a;
+                phi[i]=b;
+                i++;
+            }
+        } else {
+            std::cerr << "Initial Configuration File not found: " << filename << '\n';
+            std::cerr << "Starting flat + noise" << '\n';
+        }
+    }
+    
+    
     cuerda(unsigned long _L, real _dt):L(_L),dt(_dt),fourierCount(0)
     {
         u.resize(L);
@@ -64,24 +100,7 @@ class cuerda{
         k3_u.resize(L); k3_phi.resize(L);
         k4_u.resize(L); k4_phi.resize(L);
 
-
-        thrust::fill(u.begin(),u.end(),real(0.0));
-        thrust::fill(phi.begin(),phi.end(),real(0.0));
-
-        //real epsilon=1.0;
-        for(int i=0;i<L;i++){
-            //u[i]=Epsilon*sin(i*30.0*2*M_PI/L) ; 	
-	        u[i]=Epsilon*(rand()*1.0/RAND_MAX-0.5);
-            //phi[i]=Epsilon*sin(i*20.0*2*M_PI/L); 
-	        phi[i]=Epsilon*(rand()*1.0/RAND_MAX-0.5);
-            #ifdef TILT
-            u[i]+= i*TILT;      
-            phi[i]+= i*TILT;      
-            #endif  
-        }
-	    //std::cout << "Epsilon=" << Epsilon << std::endl;
-
-        //thrust::sequence(u.begin(),u.end());
+        initial_condition();
 
         f0=0.0;
         
@@ -307,7 +326,7 @@ class cuerda{
 
         thrust::transform(phi.begin(),phi.end(),phi.begin(),
         [=] __device__ (real phi){
-            return phi-cmphi;
+            return phi - 2*M_PI*int(cmphi/(2*M_PI));
         }
         );
     };
@@ -734,14 +753,16 @@ int main(int argc, char **argv){
     unsigned long Nrun = atoi(argv[5]);
     unsigned long Neq = unsigned(Nrun/2.0);
 
-    real dt=0.01;
+    real dt=0.1;
 
     int Nmes=1000;
-    int Nrescale=100*Nmes;
+    int Nrescale=1000*Nmes;
 
     unsigned int seed=1234;
     if(argc==7) seed=(unsigned int)atoi(argv[6]); 
     srand(seed);
+
+    
     cuerda C(L,dt);
 
 
@@ -766,8 +787,8 @@ int main(int argc, char **argv){
     cmout << "#t" << " " << "velu" << " " << "velphi" << " " << "cmu" << " " 
     << "cmphi" << " " << "cmu2" << " " << "cmphi2" << " " << "maxu" << " " << "maxphi" << std::endl;
 
-    std::ofstream lastconfout("lastconf.dat");
-    lastconfout << "#u[i]" << " " << "phi[i]" << " " << "cmu" << " " << "cmphi" << "\n";
+    std::ofstream lastconfout("final_configuration.inp");
+    //lastconfout << "#u[i]" << " " << "phi[i]" << " " << "cmu" << " " << "cmphi" << "\n";
 
     std::ofstream vhout("VvsH.dat");
     vhout << "#f0" << " " << "vcmu" << " " << "vcmphi" << " "
@@ -824,16 +845,19 @@ int main(int argc, char **argv){
 
     real vcmu,vcmphi;
 
-
     // Start the timer
     auto start = std::chrono::high_resolution_clock::now();
     logout << "Starting simulation..." << std::endl;
+    std::cout << "Starting simulation..." << std::endl;
 
     // histeresis loop
     for (real f = f0, dir = df; (dir > 0 && f <= f1) || (dir < 0 && f >= f0); f += dir)
     {
-        logout << "f= " << f0 << std::endl;
+        logout << "f= " << f << std::endl;
         logout.flush();
+
+        std::cout << "f= " << f << std::endl;
+        std::cout.flush();
 
         C.set_f0(f);
         vcmu=vcmphi=0.0;
@@ -854,14 +878,14 @@ int main(int argc, char **argv){
                     vcm=C.center_of_mass_velocity();
                     vcmu+=thrust::get<0>(vcm);
                     vcmphi+=thrust::get<1>(vcm);
-                    C.acum_velocity(vcm);
+                    C.acum_velocity(vcm); // for velocity spectrum
                     ime++;
             }
 
-            if(i%Nrescale==0) {
+            /*if(i%Nrescale==0) {
                 C.rescale();
                 logout << "rescale at " << i << std::endl;
-            }    
+            }*/    
 
             #ifdef MONITORCONFIGS
             if(i%MONITORCONFIGS==0){
@@ -912,6 +936,9 @@ int main(int argc, char **argv){
         // change direction
         if (f + dir > f1 && dir > 0) dir = -df;
     }
+
+    // prints last configuration
+    C.print_config(lastconfout);
 
     // Stop the timer
     auto end = std::chrono::high_resolution_clock::now();
