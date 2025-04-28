@@ -756,7 +756,7 @@ int main(int argc, char **argv){
     real dt=0.1;
 
     int Nmes=1000000;
-    int Nrescale=1000000;
+    int Nrescale=100000000;
 
     unsigned int seed=1234;
     if(argc==7) seed=(unsigned int)atoi(argv[6]); 
