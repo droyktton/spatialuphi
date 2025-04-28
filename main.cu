@@ -61,7 +61,7 @@ class cuerda{
 	        phi[i]=Epsilon*(rand()*1.0/RAND_MAX-0.5) + 2*M_PI*rand()*1.0/RAND_MAX;
             #ifdef TILT
             u[i]+= i*TILT;      
-            phi[i]+= i*TILT;      
+            //phi[i]+= i*TILT;      
             #endif  
         }
 
@@ -320,7 +320,7 @@ class cuerda{
 
         thrust::transform(u.begin(),u.end(),u.begin(),
         [=] __device__ (real u){
-            return u-cmu;
+            return u- 2*M_PI*int(cmu/(2*M_PI));
         }
         );
 
@@ -385,11 +385,11 @@ class cuerda{
                 #ifdef TILT
                 if(i==0) {
                     uleft -= L_*TILT;
-                    phileft -= L_*TILT;
+                    //phileft -= L_*TILT;
                 }  
                 if(i==L_-1){
                     uright += L_*TILT;
-                    phiright += L_*TILT;
+                    //phiright += L_*TILT;
                 }  
                 #endif
 
@@ -733,7 +733,7 @@ int main(int argc, char **argv){
 
     if(argc<6){
         std::cout << "Error: Not enough arguments" << std::endl;
-        std::cout << "Arguments: L f0 f1 Nrun [seed]" << std::endl;
+        std::cout << "Arguments: L f0 f1 df Nrun [seed]" << std::endl;
         std::cout << "L: length of the system" << std::endl;
         std::cout << "f0: starting force" << std::endl;
         std::cout << "f1: stoping force" << std::endl;
@@ -755,8 +755,8 @@ int main(int argc, char **argv){
 
     real dt=0.1;
 
-    int Nmes=1000;
-    int Nrescale=1000*Nmes;
+    int Nmes=1000000;
+    int Nrescale=1000000;
 
     unsigned int seed=1234;
     if(argc==7) seed=(unsigned int)atoi(argv[6]); 
@@ -786,6 +786,11 @@ int main(int argc, char **argv){
     std::ofstream cmout("cm.dat");
     cmout << "#t" << " " << "velu" << " " << "velphi" << " " << "cmu" << " " 
     << "cmphi" << " " << "cmu2" << " " << "cmphi2" << " " << "maxu" << " " << "maxphi" << std::endl;
+
+    std::ofstream logcmout("logcm.dat");
+    logcmout << "#t" << " " << "velu" << " " << "velphi" << " " << "cmu" << " " 
+    << "cmphi" << " " << "cmu2" << " " << "cmphi2" << " " << "maxu" << " " << "maxphi" << std::endl;
+
 
     std::ofstream lastconfout("final_configuration.inp");
     //lastconfout << "#u[i]" << " " << "phi[i]" << " " << "cmu" << " " << "cmphi" << "\n";
@@ -866,7 +871,10 @@ int main(int argc, char **argv){
         unsigned long ime=0;
 
 
-        for(int i=0;i<Nrun;i++)
+        unsigned long jlog=1;
+
+
+        for(int i=0;i<Nrun+1;i++)
         {
             #ifdef RK4
             C.update_runge_kutta4();
@@ -882,10 +890,10 @@ int main(int argc, char **argv){
                     ime++;
             }
 
-            /*if(i%Nrescale==0) {
+            if(i%Nrescale==0) {
                 C.rescale();
                 logout << "rescale at " << i << std::endl;
-            }*/    
+            }    
 
             #ifdef MONITORCONFIGS
             if(i%MONITORCONFIGS==0){
@@ -907,6 +915,14 @@ int main(int argc, char **argv){
             {
                 r0 = C.roughness();
                 C.reset_acum_Sofq();
+            }
+            
+            // log monitoring
+            if(i%jlog==0){
+                C.fourier_transform();
+                C.print_inst_sofq(instsofqout);
+                C.print_roughness(logcmout,i*dt,acumroughness);
+                jlog=jlog*10;
             }
         }
                
