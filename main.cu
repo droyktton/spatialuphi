@@ -874,7 +874,7 @@ int main(int argc, char **argv){
         unsigned long jlog=1;
 
 
-        for(int i=0;i<Nrun+1;i++)
+        for(int i=0;i<=Nrun;i++)
         {
             #ifdef RK4
             C.update_runge_kutta4();
@@ -918,11 +918,11 @@ int main(int argc, char **argv){
             }
             
             // log monitoring
-            if(i%jlog==0){
+            if(i==jlog){
                 C.fourier_transform();
                 C.print_inst_sofq(instsofqout);
                 C.print_roughness(logcmout,i*dt,acumroughness);
-                jlog=jlog*10;
+                jlog=jlog*2;
             }
         }
                
