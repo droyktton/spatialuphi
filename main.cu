@@ -316,7 +316,7 @@ class cuerda{
     {
         thrust::tuple<real,real> cm=center_of_mass();
         real cmu=thrust::get<0>(cm);
-        real cmphi=floor(thrust::get<1>(cm)/(2.0*M_PI))*(2.0*M_PI);
+        real cmphi=thrust::get<1>(cm);
 
         thrust::transform(u.begin(),u.end(),u.begin(),
         [=] __device__ (real u){
@@ -756,7 +756,7 @@ int main(int argc, char **argv){
     real dt=0.1;
 
     int Nmes=1000000;
-    int Nrescale=100000000;
+    int Nrescale=100000;
 
     unsigned int seed=1234;
     if(argc==7) seed=(unsigned int)atoi(argv[6]); 

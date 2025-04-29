@@ -13,15 +13,22 @@ awk -v cols=$cols \
     {
         for(i=0;i<9;i++)
         {
-            counter[i]=0;acum[i]=0;
+            counter[i]=0;
+            acum[i]=0;
+            acum2[i]=0;
         } 
         for(j=1;j<=NF;j++)
         {
             counter[(j-1)%9]++; 
             acum[(j-1)%9]+=$j;
+            acum2[(j-1)%9]+=$j*$j;
         }; 
-        for(i=0;i<9;i++) 
-        printf("%f ",acum[i]/counter[i]); 
+        for(i=0;i<9;i++){
+            acum[i]=acum[i]/counter[i];
+            acum2[i]=acum2[i]/counter[i];
+            acum2[i]=sqrt(acum2[i] - acum[i]*acum[i]);
+            printf("%f %f ",acum[i], acum2[i]);     
+        } 
         printf("%d\n", counter[8]); 
     }    
 }'
