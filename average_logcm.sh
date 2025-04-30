@@ -31,6 +31,7 @@ awk -v cols=$cols \
         } 
         printf("%d\n", counter[8]); 
     }    
-}'
+}' > "logcm_samples.dat"
 
-#plot '< bash average_logcm.sh' u 1:6 w lp, "" u 1:7 w lp, for[z in "1.25 1.5 1.75"] 0.1*x**(2*0.5/z) t 'z='.z
+
+#plot 'logcm_samples.dat' u 1:11:12 w lp, "" u 1:13:14 w lp, for[z in "1.25 1.5 1.75 2.0"] 0.1*x**(2*0.5/z) t 'z='.z
