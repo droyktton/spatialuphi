@@ -6,8 +6,9 @@ echo "#samples="$samples
 echo "#cols="$cols
 
 paste logcm????.dat | \
-awk -v cols=$cols \
+gawk -v cols=$cols \
 '
+function abs(x) { return x < 0 ? -x : x }
 {
     if(NR>1 && NF>=9)
     {
@@ -26,7 +27,7 @@ awk -v cols=$cols \
         for(i=0;i<9;i++){
             acum[i]=acum[i]/counter[i];
             acum2[i]=acum2[i]/counter[i];
-            acum2[i]=sqrt(acum2[i] - acum[i]*acum[i]);
+            acum2[i]=sqrt(abs(acum2[i] - acum[i]*acum[i]));
             printf("%f %f ",acum[i], acum2[i]);     
         } 
         printf("%d\n", counter[8]); 
