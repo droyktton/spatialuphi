@@ -12,8 +12,8 @@ awk '
     if(NF>0){
 	avsofqu= acum*0.5/NF;
 	avsofqphi = acum2*0.5/NF; 
-	erravsofqu = sqrt(erracum*0.5/NF - avsofqu**2);
-	erravsofqphi = sqrt(erracum2*0.5/NF - avsofqphi**2);
+	erravsofqu = sqrt(erracum*0.5/NF - avsofqu**2)/sqrt(0.5*NF);
+	erravsofqphi = sqrt(erracum2*0.5/NF - avsofqphi**2)/sqrt(0.5*NF);
 	print avsofqu, avsofqphi, erravsofqu, erravsofqphi; 
     }
     else print;
