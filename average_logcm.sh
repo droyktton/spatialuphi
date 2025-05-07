@@ -9,6 +9,9 @@ paste logcm????.dat | \
 gawk -v cols=$cols \
 '
 function abs(x) { return x < 0 ? -x : x }
+BEGIN{
+	printf("t velu evelu velphi evelphi cmu ecmu cmphi ecmphi cmu2 ecmu2 cmphi2 ecmphi2 maxu emaxu maxphi emaxphi");
+}
 {
     if(NR>1 && NF>=9)
     {
@@ -27,8 +30,8 @@ function abs(x) { return x < 0 ? -x : x }
         for(i=0;i<9;i++){
             acum[i]=acum[i]/counter[i];
             acum2[i]=acum2[i]/counter[i];
-            acum2[i]=sqrt(abs(acum2[i] - acum[i]*acum[i]));
-            printf("%f %f ",acum[i], acum2[i]);     
+            acum2[i]=sqrt(abs(acum2[i] - acum[i]*acum[i]))/sqrt(counter[i]);
+            printf("%f %f ",acum[i], acum2[i]);         
         } 
         printf("%d\n", counter[8]); 
     }    
