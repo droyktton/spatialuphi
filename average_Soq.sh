@@ -9,7 +9,7 @@ awk '
         acum+=$i; acum2+=$(i+1);
         erracum+=$i*$i; erracum2+=$(i+1)*$(i+1);
     }; 
-    if(NF>0){
+    if(NF>0 && NR>1){
 	    avsofqu= acum*0.5/NF;
 	    avsofqphi = acum2*0.5/NF; 
 	    erravsofqu = sqrt(erracum*0.5/NF - avsofqu**2)/sqrt(0.5*NF);
