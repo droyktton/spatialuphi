@@ -2,6 +2,7 @@ samples=$(ls inst_sofq????.dat | wc -l)
 
 paste inst_sofq????.dat | \
 awk '
+NR > 1
 {
     acum=0; acum2=0; 
     erracum=0; erracum2=0; 
@@ -9,7 +10,7 @@ awk '
         acum+=$i; acum2+=$(i+1);
         erracum+=$i*$i; erracum2+=$(i+1)*$(i+1);
     }; 
-    if(NF>0 && NR>1){
+    if(NF>0){
 	    avsofqu= acum*0.5/NF;
 	    avsofqphi = acum2*0.5/NF; 
 	    erravsofqu = sqrt(erracum*0.5/NF - avsofqu**2)/sqrt(0.5*NF);

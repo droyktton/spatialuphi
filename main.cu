@@ -701,6 +701,16 @@ class cuerda{
         out << "\n" << std::endl;
     };
 
+    void print_log_inst_sofq(std::ofstream &out){
+        int s=1;    
+        for(int i=0;i<L;i+=s){
+            out << inst_Sofq_u[i] << " " << inst_Sofq_phi[i] << "\n";
+            if(i==10*s) s=s*10;
+        }
+        out << "\n" << std::endl;
+    };
+
+
     private:
         real dt;
         unsigned long L;
