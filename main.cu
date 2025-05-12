@@ -930,7 +930,7 @@ int main(int argc, char **argv){
             // log monitoring
             if(i==jlog){
                 C.fourier_transform();
-                C.print_inst_sofq(instsofqout);
+                C.print_log_inst_sofq(instsofqout);
                 C.print_roughness(logcmout,i*dt,acumroughness);
                 jlog=jlog*2;
             }
