@@ -1,3 +1,4 @@
+
 samples=$(ls inst_sofq????.dat | wc -l)
 
 paste inst_sofq????.dat | \
