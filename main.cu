@@ -703,7 +703,7 @@ class cuerda{
 
     void print_log_inst_sofq(std::ofstream &out){
         int s=1;    
-        for(int i=0;i<L;i+=s){
+        for(int i=0;i<L/2;i+=s){
             out << inst_Sofq_u[i] << " " << inst_Sofq_phi[i] << "\n";
             if(i==10*s) s=s*10;
         }
